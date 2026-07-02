@@ -6,13 +6,13 @@ build/
 .idea/
 *.iml
 *.iws
-out/
+/out/
 
 ### Eclipse / STS ###
 .settings/
 .classpath
 .project
-bin/
+/bin/
 
 ### VS Code ###
 .vscode/
