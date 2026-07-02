@@ -1,0 +1,311 @@
+{
+  "info": {
+    "name": "chat-bot",
+    "description": "AI 챗봇 서비스 API. 위에서부터 순서대로 실행하면 회원가입 → 로그인(토큰 자동 저장) → admin 로그인 → 대화 → 피드백 → 분석까지 검증됩니다. 실행 전 `docker compose up -d` 와 `./gradlew bootRun` 필요. 기본 포트 8081. admin 계정은 시딩됨(admin@chatbot.local / admin1234).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "password123" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "chatId", "value": "" },
+    { "key": "threadId", "value": "" },
+    { "key": "feedbackId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. 회원가입 (member)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('email', 'postman-' + Date.now() + '@acme.com');",
+            "pm.collectionVariables.set('password', 'password123');"
+          ] }
+        },
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 201', () => pm.response.to.have.status(201));",
+            "console.log('가입 이메일:', pm.collectionVariables.get('email'));"
+          ] }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/auth/signup", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "signup" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"Postman User\"\n}" },
+        "auth": { "type": "noauth" }
+      }
+    },
+    {
+      "name": "2. 로그인 (member, 토큰 저장)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "pm.collectionVariables.set('token', pm.response.json().accessToken);"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "login" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" },
+        "auth": { "type": "noauth" }
+      }
+    },
+    {
+      "name": "3. 로그인 (admin, 토큰 저장)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "login" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@chatbot.local\",\n  \"password\": \"admin1234\"\n}" },
+        "auth": { "type": "noauth" }
+      }
+    },
+    {
+      "name": "4. 대화 생성 (chatId/threadId 저장)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "const j = pm.response.json();",
+          "pm.collectionVariables.set('chatId', j.chatId);",
+          "pm.collectionVariables.set('threadId', j.threadId);"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/chats", "host": [ "{{baseUrl}}" ], "path": [ "api", "chats" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"question\": \"Postman에서 보낸 질문입니다\"\n}" }
+      }
+    },
+    {
+      "name": "5. 대화 생성 (모델 지정)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/chats", "host": [ "{{baseUrl}}" ], "path": [ "api", "chats" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"question\": \"이어서 질문합니다\",\n  \"model\": \"gpt-4o\"\n}" }
+      }
+    },
+    {
+      "name": "6. 대화 생성 (스트리밍)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/chats", "host": [ "{{baseUrl}}" ], "path": [ "api", "chats" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"question\": \"긴 설명을 스트리밍으로\",\n  \"isStreaming\": true\n}" }
+      }
+    },
+    {
+      "name": "7. 대화 목록 (페이지네이션)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "pm.test('페이지 구조', () => { const j = pm.response.json(); pm.expect(j).to.have.property('items'); pm.expect(j).to.have.property('totalElements'); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chats?ascending=false&page=0&size=20",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "chats" ],
+          "query": [
+            { "key": "ascending", "value": "false" },
+            { "key": "page", "value": "0" },
+            { "key": "size", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "8. 피드백 생성 (본인 대화, feedbackId 저장)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 201', () => pm.response.to.have.status(201));",
+          "pm.collectionVariables.set('feedbackId', pm.response.json().id);"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/feedbacks", "host": [ "{{baseUrl}}" ], "path": [ "api", "feedbacks" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"chatId\": \"{{chatId}}\",\n  \"isPositive\": true\n}" }
+      }
+    },
+    {
+      "name": "9. 피드백 중복 생성 (409 검증)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('대화당 1개 제약 → 409', () => pm.response.to.have.status(409));"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/feedbacks", "host": [ "{{baseUrl}}" ], "path": [ "api", "feedbacks" ] },
+        "body": { "mode": "raw", "raw": "{\n  \"chatId\": \"{{chatId}}\",\n  \"isPositive\": false\n}" }
+      }
+    },
+    {
+      "name": "10. 피드백 목록 (isPositive 필터 + 페이지)",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": {
+          "raw": "{{baseUrl}}/api/feedbacks?isPositive=true&ascending=false&page=0&size=20",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "feedbacks" ],
+          "query": [
+            { "key": "isPositive", "value": "true" },
+            { "key": "ascending", "value": "false" },
+            { "key": "page", "value": "0" },
+            { "key": "size", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "11. 피드백 상태 변경 (admin only)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "pm.test('RESOLVED', () => pm.expect(pm.response.json().status).to.eql('RESOLVED'));"
+        ] } }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/feedbacks/{{feedbackId}}/status",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "feedbacks", "{{feedbackId}}", "status" ]
+        },
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"RESOLVED\"\n}" }
+      }
+    },
+    {
+      "name": "12. 피드백 상태 변경 (member → 403 검증)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('member 금지 → 403', () => pm.response.to.have.status(403));"
+        ] } }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/feedbacks/{{feedbackId}}/status",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "feedbacks", "{{feedbackId}}", "status" ]
+        },
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"PENDING\"\n}" }
+      }
+    },
+    {
+      "name": "13. 분석: 사용자 활동 (admin, 24h)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "pm.test('집계 필드', () => { const j = pm.response.json(); pm.expect(j).to.have.property('signupCount'); pm.expect(j).to.have.property('loginCount'); pm.expect(j).to.have.property('chatCreatedCount'); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/analytics/activity", "host": [ "{{baseUrl}}" ], "path": [ "api", "analytics", "activity" ] }
+      }
+    },
+    {
+      "name": "14. 분석: 활동 (member → 403 검증)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('member 금지 → 403', () => pm.response.to.have.status(403));"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/analytics/activity", "host": [ "{{baseUrl}}" ], "path": [ "api", "analytics", "activity" ] }
+      }
+    },
+    {
+      "name": "15. 분석: CSV 보고서 (admin, 24h)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 200', () => pm.response.to.have.status(200));",
+          "pm.test('text/csv', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'));"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{adminToken}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/analytics/report", "host": [ "{{baseUrl}}" ], "path": [ "api", "analytics", "report" ] }
+      }
+    },
+    {
+      "name": "16. 스레드 삭제 (본인)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 204', () => pm.response.to.have.status(204));"
+        ] } }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chats/threads/{{threadId}}",
+          "host": [ "{{baseUrl}}" ],
+          "path": [ "api", "chats", "threads", "{{threadId}}" ]
+        }
+      }
+    },
+    {
+      "name": "17. 로그아웃",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status 204', () => pm.response.to.have.status(204));"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+        "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": [ "{{baseUrl}}" ], "path": [ "api", "auth", "logout" ] }
+      }
+    }
+  ]
+}

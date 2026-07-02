@@ -1,0 +1,28 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IntelliJ ###
+.idea/
+*.iml
+*.iws
+out/
+
+### Eclipse / STS ###
+.settings/
+.classpath
+.project
+bin/
+
+### VS Code ###
+.vscode/
+
+### OS ###
+.DS_Store
+
+### Env ###
+.env
+*.local
+
+### OMC ###
+.omc/

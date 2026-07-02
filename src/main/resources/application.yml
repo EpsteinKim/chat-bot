@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: chat-bot
+  datasource:
+    main:
+      url: ${DB_URL:jdbc:postgresql://localhost:5432/chatbot}
+      driver-class-name: org.postgresql.Driver
+      username: ${DB_USERNAME:chatbot}
+      password: ${DB_PASSWORD:chatbot}
+
+  flyway:
+    enabled: false
+
+server:
+  port: ${SERVER_PORT:8081}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:1c0e1451-fa05-4d00-a0cc-afad78111c87}
+    expiration-ms: 86400000
+  chat:
+    thread-idle-minutes: 30
+  admin:
+    email: ${ADMIN_EMAIL:admin@chatbot.local}
+    password: ${ADMIN_PASSWORD:admin1234}
+    name: ${ADMIN_NAME:Administrator}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    default-model: ${OPENAI_DEFAULT_MODEL:gpt-4o-mini}
+
+logging:
+  level:
+    org.springframework.security: INFO
